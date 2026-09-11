@@ -1,0 +1,85 @@
+@ApparelMiddlewareGateway_HostAddress = http://localhost:5038
+
+### 1. Get a test token (Development, or when Auth:EnableTestTokenEndpoint=true) — defaults to OP-777 / Spreader_01
+# @name auth
+GET {{ApparelMiddlewareGateway_HostAddress}}/api/Auth/generate-test-token
+Accept: application/json
+
+### 1b. Mint a token for a different operator / line (positive-case demo for Spreader_02)
+GET {{ApparelMiddlewareGateway_HostAddress}}/api/Auth/generate-test-token?operator=OP-901&line=Spreader_02
+Accept: application/json
+
+### 2. Fetch a cutting job + its rolls from the database (seeded: CJ-9920 -> Spreader_01)
+GET {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/cutting-job/CJ-9920
+Authorization: Bearer {{auth.response.body.$}}
+Accept: application/json
+
+### 2b. Unknown job -> expect 404
+GET {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/cutting-job/CJ-0000
+Authorization: Bearer {{auth.response.body.$}}
+Accept: application/json
+
+### 2c. BOLA on read: CJ-9921 is routed to Spreader_02, token is Spreader_01 -> expect 403
+GET {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/cutting-job/CJ-9921
+Authorization: Bearer {{auth.response.body.$}}
+Accept: application/json
+
+### 3. Submit telemetry for a roll on the operator's own job (includes a mass-assignment probe)
+POST {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/spreader-telemetry?lineID=Spreader_01
+Authorization: Bearer {{auth.response.body.$}}
+Content-Type: application/json
+
+{
+  "cuttingJobNo": "CJ-9920",
+  "rollID": "R-1045",
+  "actualPlyHeight": 50,
+  "endBit": 1.5,
+  "overlapStart": 2.0,
+  "overlapEnd": 2.0,
+  "damage": 0.0,
+  "UserRole": "Admin"
+}
+
+### 3b. Roll not assigned to the job (also the SQL-injection probe target) -> expect 400
+POST {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/spreader-telemetry?lineID=Spreader_01
+Authorization: Bearer {{auth.response.body.$}}
+Content-Type: application/json
+
+{
+  "cuttingJobNo": "CJ-9920",
+  "rollID": "' OR 1=1; DROP TABLE SpreaderTelemetry; --",
+  "actualPlyHeight": 50
+}
+
+### 4. Duplicate submission of step 3 -> expect 409 Conflict
+POST {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/spreader-telemetry?lineID=Spreader_01
+Authorization: Bearer {{auth.response.body.$}}
+Content-Type: application/json
+
+{
+  "cuttingJobNo": "CJ-9920",
+  "rollID": "R-1045",
+  "actualPlyHeight": 50
+}
+
+### 5. BOLA on write: hand-crafted POST for CJ-9921 (Spreader_02) with a Spreader_01 token -> expect 403
+POST {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/spreader-telemetry?lineID=Spreader_02
+Authorization: Bearer {{auth.response.body.$}}
+Content-Type: application/json
+
+{
+  "cuttingJobNo": "CJ-9921",
+  "rollID": "R-2050",
+  "actualPlyHeight": 50
+}
+
+### 5b. Parameter tampering: own job, but ?lineID altered -> expect 400 (consistency, not 403)
+POST {{ApparelMiddlewareGateway_HostAddress}}/api/Telemetry/spreader-telemetry?lineID=Spreader_02
+Authorization: Bearer {{auth.response.body.$}}
+Content-Type: application/json
+
+{
+  "cuttingJobNo": "CJ-9920",
+  "rollID": "R-1046",
+  "actualPlyHeight": 50
+}

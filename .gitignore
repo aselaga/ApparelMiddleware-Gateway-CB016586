@@ -1,0 +1,28 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Publish profiles / service dependencies contain environment-specific data
+**/Properties/PublishProfiles/
+**/Properties/ServiceDependencies/
+**/serviceDependencies*.json
+
+# Local configuration & secrets
+appsettings.*.local.json
+secrets.json
+
+# OS files
+.DS_Store
+Thumbs.db
