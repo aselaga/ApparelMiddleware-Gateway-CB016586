@@ -173,10 +173,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // IMPORTANT: Middleware Pipeline Order Matters!
-app.UseCors("AllowLCNCApp");      // CORS must be applied before Auth
-app.UseAuthentication();          // Who is the user?
-app.UseAuthorization();           // Are they allowed to do this?
-app.UseRateLimiter();             // Throttle authenticated callers
+app.UseCors("AllowLCNCApp");      
+app.UseAuthentication();         
+app.UseAuthorization();           
+app.UseRateLimiter();             
 
 app.MapControllers();
 app.Run();
